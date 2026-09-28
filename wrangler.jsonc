@@ -19,15 +19,22 @@
   // "vars": {
   //   "PROF_SIGNUP_CODE": "change-me-classroom-code"
   // },
-  "d1_databases": [
+  // All persistent state lives in a SQLite-backed Durable Object. Cloudflare
+  // provisions it automatically on `wrangler deploy` (via the migrations entry
+  // below), so there is NO account-level resource to create and NO database_id
+  // to paste in. The site goes live from a bare deploy.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DATA",
+        "class_name": "DataStore"
+      }
+    ]
+  },
+  "migrations": [
     {
-      "binding": "DB",
-      "database_name": "testpaper_db",
-      // database_id is a PLACEHOLDER. Before your first real deploy, run:
-      //   npx wrangler d1 create testpaper_db
-      // then paste the returned "database_id" value below (replacing this placeholder).
-      "database_id": "PLACEHOLDER-REPLACE-AFTER-wrangler-d1-create",
-      "migrations_dir": "migrations"
+      "tag": "v1",
+      "new_sqlite_classes": ["DataStore"]
     }
   ]
 }

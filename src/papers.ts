@@ -1,7 +1,10 @@
 /**
- * Test-paper & assessment domain: typed D1 query helpers for papers,
- * questions, and submissions.
+ * Test-paper & assessment domain: typed data helpers for papers, questions,
+ * and submissions. Queries are delegated to the SQLite-backed Durable Object
+ * (see src/store.ts); toPublicQuestion and gradeAnswers remain pure.
  */
+
+import type { Store } from "./db";
 
 export interface PaperRow {
   id: number;
@@ -81,7 +84,7 @@ export function toPublicQuestion(
 // ---- papers ----
 
 export async function createPaper(
-  db: D1Database,
+  store: Store,
   params: {
     title: string;
     description: string | null;
@@ -89,31 +92,18 @@ export async function createPaper(
     authorId: number;
   }
 ): Promise<PaperRow> {
-  const row = await db
-    .prepare(
-      `INSERT INTO test_papers (title, description, subject, author_id)
-       VALUES (?, ?, ?, ?)
-       RETURNING *`
-    )
-    .bind(params.title, params.description, params.subject, params.authorId)
-    .first<PaperRow>();
-  if (!row) throw new Error("Failed to insert paper");
-  return row;
+  return store.createPaper(params);
 }
 
 export async function findPaperById(
-  db: D1Database,
+  store: Store,
   id: number
 ): Promise<PaperRow | null> {
-  const row = await db
-    .prepare("SELECT * FROM test_papers WHERE id = ?")
-    .bind(id)
-    .first<PaperRow>();
-  return row ?? null;
+  return store.findPaperById(id);
 }
 
 export async function updatePaper(
-  db: D1Database,
+  store: Store,
   id: number,
   params: {
     title: string;
@@ -122,64 +112,32 @@ export async function updatePaper(
     published: number;
   }
 ): Promise<PaperRow | null> {
-  const row = await db
-    .prepare(
-      `UPDATE test_papers
-       SET title = ?, description = ?, subject = ?, published = ?
-       WHERE id = ?
-       RETURNING *`
-    )
-    .bind(
-      params.title,
-      params.description,
-      params.subject,
-      params.published,
-      id
-    )
-    .first<PaperRow>();
-  return row ?? null;
+  return store.updatePaper(id, params);
 }
 
-export async function deletePaper(db: D1Database, id: number): Promise<void> {
-  // Clean up dependents first (D1 does not enforce ON DELETE CASCADE unless
-  // PRAGMA foreign_keys is on, so we remove children explicitly).
-  await db.batch([
-    db.prepare("DELETE FROM questions WHERE paper_id = ?").bind(id),
-    db.prepare("DELETE FROM submissions WHERE paper_id = ?").bind(id),
-    db.prepare("DELETE FROM test_papers WHERE id = ?").bind(id),
-  ]);
+export async function deletePaper(store: Store, id: number): Promise<void> {
+  await store.deletePaper(id);
 }
 
 /** Papers a professor authored (drafts + published). */
 export async function listPapersByAuthor(
-  db: D1Database,
+  store: Store,
   authorId: number
 ): Promise<PaperRow[]> {
-  const { results } = await db
-    .prepare(
-      "SELECT * FROM test_papers WHERE author_id = ? ORDER BY created_at DESC, id DESC"
-    )
-    .bind(authorId)
-    .all<PaperRow>();
-  return results ?? [];
+  return store.listPapersByAuthor(authorId);
 }
 
 /** Published papers visible to students. */
 export async function listPublishedPapers(
-  db: D1Database
+  store: Store
 ): Promise<PaperRow[]> {
-  const { results } = await db
-    .prepare(
-      "SELECT * FROM test_papers WHERE published = 1 ORDER BY created_at DESC, id DESC"
-    )
-    .all<PaperRow>();
-  return results ?? [];
+  return store.listPublishedPapers();
 }
 
 // ---- questions ----
 
 export async function addQuestion(
-  db: D1Database,
+  store: Store,
   params: {
     paperId: number;
     position: number;
@@ -189,57 +147,29 @@ export async function addQuestion(
     points: number;
   }
 ): Promise<QuestionRow> {
-  const row = await db
-    .prepare(
-      `INSERT INTO questions (paper_id, position, prompt, options, correct_answer, points)
-       VALUES (?, ?, ?, ?, ?, ?)
-       RETURNING *`
-    )
-    .bind(
-      params.paperId,
-      params.position,
-      params.prompt,
-      params.options,
-      params.correctAnswer,
-      params.points
-    )
-    .first<QuestionRow>();
-  if (!row) throw new Error("Failed to insert question");
-  return row;
+  return store.addQuestion(params);
 }
 
 export async function listQuestions(
-  db: D1Database,
+  store: Store,
   paperId: number
 ): Promise<QuestionRow[]> {
-  const { results } = await db
-    .prepare(
-      "SELECT * FROM questions WHERE paper_id = ? ORDER BY position ASC, id ASC"
-    )
-    .bind(paperId)
-    .all<QuestionRow>();
-  return results ?? [];
+  return store.listQuestions(paperId);
 }
 
 /** Next position value for a new question in a paper (1-based). */
 export async function nextQuestionPosition(
-  db: D1Database,
+  store: Store,
   paperId: number
 ): Promise<number> {
-  const row = await db
-    .prepare(
-      "SELECT COALESCE(MAX(position), 0) AS maxpos FROM questions WHERE paper_id = ?"
-    )
-    .bind(paperId)
-    .first<{ maxpos: number }>();
-  return (row?.maxpos ?? 0) + 1;
+  return store.nextQuestionPosition(paperId);
 }
 
 // ---- submissions ----
 
 /** Upsert a student's single attempt for a paper (one row per pair). */
 export async function upsertSubmission(
-  db: D1Database,
+  store: Store,
   params: {
     paperId: number;
     studentId: number;
@@ -248,41 +178,15 @@ export async function upsertSubmission(
     maxScore: number;
   }
 ): Promise<SubmissionRow> {
-  const row = await db
-    .prepare(
-      `INSERT INTO submissions (paper_id, student_id, answers, score, max_score, submitted_at)
-       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(paper_id, student_id)
-       DO UPDATE SET answers = excluded.answers,
-                     score = excluded.score,
-                     max_score = excluded.max_score,
-                     submitted_at = CURRENT_TIMESTAMP
-       RETURNING *`
-    )
-    .bind(
-      params.paperId,
-      params.studentId,
-      params.answers,
-      params.score,
-      params.maxScore
-    )
-    .first<SubmissionRow>();
-  if (!row) throw new Error("Failed to upsert submission");
-  return row;
+  return store.upsertSubmission(params);
 }
 
 export async function findSubmission(
-  db: D1Database,
+  store: Store,
   paperId: number,
   studentId: number
 ): Promise<SubmissionRow | null> {
-  const row = await db
-    .prepare(
-      "SELECT * FROM submissions WHERE paper_id = ? AND student_id = ?"
-    )
-    .bind(paperId, studentId)
-    .first<SubmissionRow>();
-  return row ?? null;
+  return store.findSubmission(paperId, studentId);
 }
 
 /** List submissions for a paper joined with the student's name/email. */
@@ -292,20 +196,10 @@ export interface SubmissionWithStudent extends SubmissionRow {
 }
 
 export async function listSubmissionsForPaper(
-  db: D1Database,
+  store: Store,
   paperId: number
 ): Promise<SubmissionWithStudent[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT s.*, u.name AS student_name, u.email AS student_email
-       FROM submissions s
-       JOIN users u ON u.id = s.student_id
-       WHERE s.paper_id = ?
-       ORDER BY s.submitted_at DESC, s.id DESC`
-    )
-    .bind(paperId)
-    .all<SubmissionWithStudent>();
-  return results ?? [];
+  return store.listSubmissionsForPaper(paperId);
 }
 
 /**

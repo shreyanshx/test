@@ -1,9 +1,19 @@
 /**
- * D1 bindings and typed query helpers used by the auth layer.
+ * Bindings and typed data helpers for the auth layer.
+ *
+ * Persistence lives in a SQLite-backed Durable Object (see src/store.ts). The
+ * helpers below keep their former external shapes but delegate every query to
+ * the DO singleton, so callers see the same row types they saw with D1.
  */
 
+import type { DataStore } from "./store";
+
+/** The Durable Object stub for the data store singleton. */
+export type Store = DurableObjectStub<DataStore>;
+
 export type Bindings = {
-  DB: D1Database;
+  /** SQLite-backed Durable Object namespace holding all app state. */
+  DATA: DurableObjectNamespace<DataStore>;
   ASSETS: Fetcher;
   /**
    * Optional secret gating professor self-registration. When set (via
@@ -13,6 +23,11 @@ export type Bindings = {
    */
   PROF_SIGNUP_CODE?: string;
 };
+
+/** Resolve the singleton data-store stub for this environment. */
+export function getStore(env: Bindings): Store {
+  return env.DATA.get(env.DATA.idFromName("global"));
+}
 
 export type Role = "student" | "prof";
 
@@ -46,29 +61,21 @@ export function toPublicUser(u: UserRow): PublicUser {
 }
 
 export async function findUserByEmail(
-  db: D1Database,
+  store: Store,
   email: string
 ): Promise<UserRow | null> {
-  const row = await db
-    .prepare("SELECT * FROM users WHERE email = ?")
-    .bind(email)
-    .first<UserRow>();
-  return row ?? null;
+  return store.findUserByEmail(email);
 }
 
 export async function findUserById(
-  db: D1Database,
+  store: Store,
   id: number
 ): Promise<UserRow | null> {
-  const row = await db
-    .prepare("SELECT * FROM users WHERE id = ?")
-    .bind(id)
-    .first<UserRow>();
-  return row ?? null;
+  return store.findUserById(id);
 }
 
 export async function insertUser(
-  db: D1Database,
+  store: Store,
   params: {
     email: string;
     name: string;
@@ -77,68 +84,29 @@ export async function insertUser(
     passwordSalt: string;
   }
 ): Promise<UserRow> {
-  const row = await db
-    .prepare(
-      `INSERT INTO users (email, name, role, password_hash, password_salt)
-       VALUES (?, ?, ?, ?, ?)
-       RETURNING *`
-    )
-    .bind(
-      params.email,
-      params.name,
-      params.role,
-      params.passwordHash,
-      params.passwordSalt
-    )
-    .first<UserRow>();
-
-  if (!row) {
-    throw new Error("Failed to insert user");
-  }
-  return row;
+  return store.insertUser(params);
 }
 
 export async function createSession(
-  db: D1Database,
+  store: Store,
   params: { id: string; userId: number; expiresAt: string }
 ): Promise<void> {
-  await db
-    .prepare(
-      "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
-    )
-    .bind(params.id, params.userId, params.expiresAt)
-    .run();
+  await store.createSession(params);
 }
 
 /** Returns the session joined with its user, only if not expired. */
 export async function findSession(
-  db: D1Database,
+  store: Store,
   sessionId: string
 ): Promise<{ session: SessionRow; user: UserRow } | null> {
-  const session = await db
-    .prepare("SELECT * FROM sessions WHERE id = ?")
-    .bind(sessionId)
-    .first<SessionRow>();
-
-  if (!session) return null;
-
-  // Expired sessions are treated as invalid and cleaned up.
-  if (new Date(session.expires_at).getTime() <= Date.now()) {
-    await deleteSession(db, sessionId);
-    return null;
-  }
-
-  const user = await findUserById(db, session.user_id);
-  if (!user) return null;
-
-  return { session, user };
+  return store.findSession(sessionId);
 }
 
 export async function deleteSession(
-  db: D1Database,
+  store: Store,
   sessionId: string
 ): Promise<void> {
-  await db.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionId).run();
+  await store.deleteSession(sessionId);
 }
 
 /**
@@ -147,26 +115,18 @@ export async function deleteSession(
  * compromise flows. Returns the number of sessions removed.
  */
 export async function deleteSessionsForUser(
-  db: D1Database,
+  store: Store,
   userId: number
 ): Promise<number> {
-  const res = await db
-    .prepare("DELETE FROM sessions WHERE user_id = ?")
-    .bind(userId)
-    .run();
-  return res.meta.changes ?? 0;
+  return store.deleteSessionsForUser(userId);
 }
 
 /** Delete every session whose expiry is at or before `now` (housekeeping). */
 export async function deleteExpiredSessions(
-  db: D1Database,
+  store: Store,
   now: Date = new Date()
 ): Promise<number> {
-  const res = await db
-    .prepare("DELETE FROM sessions WHERE expires_at <= ?")
-    .bind(now.toISOString())
-    .run();
-  return res.meta.changes ?? 0;
+  return store.deleteExpiredSessions(now.toISOString());
 }
 
 // ---- login throttling ----
@@ -181,15 +141,11 @@ export interface LoginAttemptRow {
 }
 
 export async function findLoginAttempt(
-  db: D1Database,
+  store: Store,
   email: string,
   ip: string
 ): Promise<LoginAttemptRow | null> {
-  const row = await db
-    .prepare("SELECT * FROM login_attempts WHERE email = ? AND ip = ?")
-    .bind(email, ip)
-    .first<LoginAttemptRow>();
-  return row ?? null;
+  return store.findLoginAttempt(email, ip);
 }
 
 /**
@@ -198,7 +154,7 @@ export async function findLoginAttempt(
  * `locked_until` once the threshold is reached. Returns the updated row.
  */
 export async function recordFailedLogin(
-  db: D1Database,
+  store: Store,
   params: {
     email: string;
     ip: string;
@@ -208,33 +164,20 @@ export async function recordFailedLogin(
     lockedUntil: string | null;
   }
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO login_attempts (email, ip, failures, window_start, locked_until)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(email, ip)
-       DO UPDATE SET failures = excluded.failures,
-                     window_start = excluded.window_start,
-                     locked_until = excluded.locked_until`
-    )
-    .bind(
-      params.email,
-      params.ip,
-      params.failures,
-      params.windowStart,
-      params.lockedUntil
-    )
-    .run();
+  await store.recordFailedLogin({
+    email: params.email,
+    ip: params.ip,
+    windowStart: params.windowStart,
+    failures: params.failures,
+    lockedUntil: params.lockedUntil,
+  });
 }
 
 /** Clear the failure bucket for (email, ip) after a successful login. */
 export async function clearLoginAttempts(
-  db: D1Database,
+  store: Store,
   email: string,
   ip: string
 ): Promise<void> {
-  await db
-    .prepare("DELETE FROM login_attempts WHERE email = ? AND ip = ?")
-    .bind(email, ip)
-    .run();
+  await store.clearLoginAttempts(email, ip);
 }

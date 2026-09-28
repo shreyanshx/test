@@ -1,12 +1,13 @@
-import type { D1Migration } from "@cloudflare/vitest-pool-workers/config";
+import type { DataStore } from "../src/store";
 
 declare module "cloudflare:test" {
-  // Augment the test environment with our worker bindings plus the
-  // test-only migrations binding wired up in vitest.config.ts.
+  // Augment the test environment with our worker bindings. All persistent
+  // state lives in the SQLite-backed Durable Object (bound as DATA in
+  // wrangler.jsonc); vitest-pool-workers exposes it here through the same
+  // wrangler.jsonc the pool is wired to.
   interface ProvidedEnv {
-    DB: D1Database;
+    DATA: DurableObjectNamespace<DataStore>;
     ASSETS: Fetcher;
-    TEST_MIGRATIONS: D1Migration[];
     // Configured in vitest.config.ts to exercise the professor signup gate.
     PROF_SIGNUP_CODE?: string;
   }
