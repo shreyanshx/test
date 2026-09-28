@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "test",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-11-01",
+  // Static frontend served from ./public via the Worker.
+  // not_found_handling "single-page-application" makes unknown paths fall back to index.html.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  // Optional: gate professor self-registration behind a shared code.
+  // If PROF_SIGNUP_CODE is set, /api/auth/signup requires a matching
+  // "prof_code" to register as a professor; if unset, anyone may pick the
+  // "prof" role (open classroom mode). Prefer a Worker secret for production:
+  //   npx wrangler secret put PROF_SIGNUP_CODE
+  // For local dev you can uncomment the plain var below instead.
+  // "vars": {
+  //   "PROF_SIGNUP_CODE": "change-me-classroom-code"
+  // },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "testpaper_db",
+      // database_id is a PLACEHOLDER. Before your first real deploy, run:
+      //   npx wrangler d1 create testpaper_db
+      // then paste the returned "database_id" value below (replacing this placeholder).
+      "database_id": "PLACEHOLDER-REPLACE-AFTER-wrangler-d1-create",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
