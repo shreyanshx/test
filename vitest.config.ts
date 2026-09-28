@@ -3,8 +3,6 @@ import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
 export default defineWorkersConfig(async () => {
   return {
     test: {
-      // A global setup file initializes any per-run test state.
-      setupFiles: ["./test/apply-migrations.ts"],
       poolOptions: {
         workers: {
           // Wire the pool to the same wrangler.jsonc used for real deploys so

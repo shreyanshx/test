@@ -191,14 +191,12 @@ If you connect this GitHub repo to Cloudflare for automatic builds/deploys, the
 - **Root directory:** `test`. All app code (this folder: `src/`, `public/`,
   `wrangler.jsonc`, `package.json`) lives here, so point the build's root
   directory at `test`.
-- **Build command (optional):** the authoritative deploy command for this
-  project is `npx wrangler deploy`. You can leave the Build command field blank
-  (or set a no-op) and let the platform deploy from `wrangler.jsonc`, or set it
-  explicitly to `npx wrangler deploy`. For previews the analogous command is
-  `npx wrangler preview`. Note that current wrangler versions have moved
-  preview onto `wrangler versions upload` (and `wrangler dev` for local
-  preview), but `npx wrangler deploy` remains the authoritative deploy command
-  your settings reference.
+- **Build command:** set it to `npx wrangler deploy`. That single command takes
+  the site live because the SQLite-backed Durable Object is provisioned
+  automatically from `wrangler.jsonc` on deploy, so **no Cloudflare resource has
+  to be created first and no `database_id` is required**. Note that the
+  standalone `wrangler preview` command was removed in wrangler v4; local
+  preview is now `wrangler dev` (i.e. `npm run dev`).
 - **Enable Preview builds:** when on, Cloudflare builds a preview deployment for
   pull requests / non-production branches so you can review changes on a
   separate URL before they reach production. Leave off if you only want
