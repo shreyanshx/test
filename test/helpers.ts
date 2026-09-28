@@ -47,7 +47,12 @@ export class TestClient {
     });
 
     // Capture any Set-Cookie headers so the session persists across requests.
-    const setCookies = res.headers.getSetCookie?.() ?? [];
+    // getSetCookie exists on the workerd Headers at runtime but isn't in the
+    // @cloudflare/workers-types Headers type, so read it through a cast.
+    const getSetCookie = (
+      res.headers as Headers & { getSetCookie?: () => string[] }
+    ).getSetCookie;
+    const setCookies = getSetCookie ? getSetCookie.call(res.headers) : [];
     for (const sc of setCookies) {
       const parsed = parseSetCookie(sc);
       if (!parsed) continue;

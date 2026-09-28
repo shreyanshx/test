@@ -22,7 +22,14 @@ export default defineWorkersConfig(async () => {
           miniflare: {
             // Expose the parsed migrations to the setup file via a test-only
             // binding. `applyD1Migrations` consumes this shape.
-            bindings: { TEST_MIGRATIONS: migrations },
+            // PROF_SIGNUP_CODE exercises the professor self-registration gate
+            // (review finding 1): with it set, prof signups must supply the
+            // matching `prof_code`. Tests import this value from
+            // ./test/prof-code.ts.
+            bindings: {
+              TEST_MIGRATIONS: migrations,
+              PROF_SIGNUP_CODE: "test-prof-code",
+            },
           },
         },
       },

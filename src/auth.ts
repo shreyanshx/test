@@ -12,7 +12,13 @@ import type {
   Role,
   UserRow,
 } from "./db";
-import { findSession, toPublicUser } from "./db";
+import {
+  clearLoginAttempts,
+  findLoginAttempt,
+  findSession,
+  recordFailedLogin,
+  toPublicUser,
+} from "./db";
 
 const SESSION_COOKIE = "sid";
 const PBKDF2_ITERATIONS = 100_000;
@@ -20,6 +26,14 @@ const HASH_BYTES = 32;
 const SALT_BYTES = 16;
 // Session lifetime: 7 days.
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// ---- login throttling ----
+// Per (email, ip) sliding window: after LOGIN_MAX_FAILURES failed attempts
+// within LOGIN_WINDOW_MS, the pair is locked out for LOGIN_LOCKOUT_MS. This
+// bounds online password guessing without needing external state.
+export const LOGIN_MAX_FAILURES = 5;
+export const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 // ---- hex helpers ----
 
@@ -147,6 +161,76 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
   c.set("user", toPublicUser(found.user));
   await next();
 });
+
+/** Best-effort client IP for throttling: CF-Connecting-IP, else a fixed key. */
+export function getClientIp(c: Context): string {
+  return (
+    c.req.header("cf-connecting-ip") ||
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
+}
+
+/**
+ * Check whether the (email, ip) pair is currently locked out from logging in.
+ * Called before verifying credentials. Returns the number of seconds remaining
+ * on the lockout, or null when the caller may proceed.
+ */
+export async function loginLockoutRemaining(
+  db: Bindings["DB"],
+  email: string,
+  ip: string,
+  now: number = Date.now()
+): Promise<number | null> {
+  const row = await findLoginAttempt(db, email, ip);
+  if (!row || !row.locked_until) return null;
+  const until = new Date(row.locked_until).getTime();
+  if (until <= now) return null;
+  return Math.ceil((until - now) / 1000);
+}
+
+/**
+ * Record a failed login attempt, applying the sliding-window / lockout policy.
+ * Resets the counter when the window has elapsed; sets a lockout once the
+ * failure threshold is reached.
+ */
+export async function registerLoginFailure(
+  db: Bindings["DB"],
+  email: string,
+  ip: string,
+  now: number = Date.now()
+): Promise<void> {
+  const row = await findLoginAttempt(db, email, ip);
+  const windowStartMs = row ? new Date(row.window_start).getTime() : now;
+  const withinWindow = row !== null && now - windowStartMs < LOGIN_WINDOW_MS;
+
+  const failures = withinWindow ? row!.failures + 1 : 1;
+  const windowStart = withinWindow
+    ? row!.window_start
+    : new Date(now).toISOString();
+  const lockedUntil =
+    failures >= LOGIN_MAX_FAILURES
+      ? new Date(now + LOGIN_LOCKOUT_MS).toISOString()
+      : null;
+
+  await recordFailedLogin(db, {
+    email,
+    ip,
+    now: new Date(now),
+    windowStart,
+    failures,
+    lockedUntil,
+  });
+}
+
+/** Clear the failure bucket after a successful login. */
+export async function registerLoginSuccess(
+  db: Bindings["DB"],
+  email: string,
+  ip: string
+): Promise<void> {
+  await clearLoginAttempts(db, email, ip);
+}
 
 /** Requires the authenticated user to have a specific role. Use after requireAuth. */
 export function requireRole(role: Role) {

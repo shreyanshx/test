@@ -10,15 +10,21 @@ import type { Bindings, Role } from "./db";
 import {
   createSession,
   deleteSession,
+  deleteSessionsForUser,
+  findSession,
   findUserByEmail,
   insertUser,
 } from "./db";
 import {
   AuthVariables,
   clearSessionCookie,
+  getClientIp,
   getSessionId,
   hashPassword,
+  loginLockoutRemaining,
   newSessionId,
+  registerLoginFailure,
+  registerLoginSuccess,
   requireAuth,
   requireRole,
   sessionExpiry,
@@ -64,11 +70,12 @@ auth.post("/signup", async (c) => {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
 
-  const { email, name, password, role } = body as {
+  const { email, name, password, role, prof_code } = body as {
     email?: unknown;
     name?: unknown;
     password?: unknown;
     role?: unknown;
+    prof_code?: unknown;
   };
 
   if (!isValidEmail(email)) {
@@ -82,6 +89,24 @@ auth.post("/signup", async (c) => {
   }
   if (typeof role !== "string" || !VALID_ROLES.includes(role as Role)) {
     return c.json({ error: "Role must be 'student' or 'prof'" }, 400);
+  }
+
+  // Professor self-registration gate (review finding 1). Without this, anyone
+  // could pick role "prof" and gain full authoring/grading powers. When the
+  // PROF_SIGNUP_CODE binding is configured, registering as a professor requires
+  // the caller to supply the matching `prof_code`. When it is unset the tool
+  // behaves as an open classroom app (documented in the README), so this stays
+  // opt-in and does not break local dev where no secret is set.
+  if (role === "prof") {
+    const expectedCode = c.env.PROF_SIGNUP_CODE;
+    if (typeof expectedCode === "string" && expectedCode.length > 0) {
+      if (typeof prof_code !== "string" || prof_code !== expectedCode) {
+        return c.json(
+          { error: "A valid professor signup code is required" },
+          403
+        );
+      }
+    }
   }
 
   const existing = await findUserByEmail(c.env.DB, email);
@@ -131,8 +156,23 @@ auth.post("/login", async (c) => {
     return c.json({ error: "Email and password are required" }, 400);
   }
 
+  // Login throttling (review finding 3): a per (email, ip) sliding-window
+  // lockout bounds online password guessing. Keyed on the normalized email so
+  // an attacker can't bypass it by varying letter case.
+  const throttleKey = email.trim().toLowerCase();
+  const ip = getClientIp(c);
+  const lockedFor = await loginLockoutRemaining(c.env.DB, throttleKey, ip);
+  if (lockedFor !== null) {
+    return c.json(
+      { error: "Too many failed attempts. Try again later." },
+      429,
+      { "Retry-After": String(lockedFor) }
+    );
+  }
+
   const user = await findUserByEmail(c.env.DB, email);
   if (!user) {
+    await registerLoginFailure(c.env.DB, throttleKey, ip);
     return c.json({ error: "Invalid email or password" }, 401);
   }
 
@@ -142,8 +182,12 @@ auth.post("/login", async (c) => {
     user.password_salt
   );
   if (!ok) {
+    await registerLoginFailure(c.env.DB, throttleKey, ip);
     return c.json({ error: "Invalid email or password" }, 401);
   }
+
+  // Successful login clears the failure bucket for this (email, ip).
+  await registerLoginSuccess(c.env.DB, throttleKey, ip);
 
   const sid = newSessionId();
   await createSession(c.env.DB, {
@@ -160,8 +204,29 @@ auth.post("/login", async (c) => {
 
 auth.post("/logout", async (c) => {
   const sid = getSessionId(c);
+  // Optional { all: true } revokes every session for the account
+  // ("sign out everywhere"), addressing review finding 4. Parsing the body is
+  // best-effort so a plain logout with no body still works.
+  let revokeAll = false;
+  try {
+    const body = (await c.req.json()) as { all?: unknown };
+    revokeAll = body?.all === true;
+  } catch {
+    revokeAll = false;
+  }
+
   if (sid) {
-    await deleteSession(c.env.DB, sid);
+    if (revokeAll) {
+      // Resolve the session to its user, then drop every session they own.
+      const found = await findSession(c.env.DB, sid);
+      if (found) {
+        await deleteSessionsForUser(c.env.DB, found.user.id);
+      } else {
+        await deleteSession(c.env.DB, sid);
+      }
+    } else {
+      await deleteSession(c.env.DB, sid);
+    }
   }
   clearSessionCookie(c);
   return c.json({ ok: true });
@@ -544,6 +609,15 @@ papers.get("/:id/result", requireRole("student"), async (c) => {
 });
 
 app.route("/api/papers", papers);
+
+// ---- Unknown API routes ----
+// Any /api/* request not matched above is a real 404. Without this it would
+// fall through to the SPA fallback below and return index.html with status 200
+// (review finding 2), forcing API clients to parse HTML on a "success". Return
+// machine-readable JSON instead.
+app.all("/api/*", (c) => {
+  return c.json({ error: "Not found" }, 404);
+});
 
 // ---- Static assets / SPA fallback ----
 // Any request not handled by an /api route is served from the assets binding.

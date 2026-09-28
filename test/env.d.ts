@@ -7,5 +7,7 @@ declare module "cloudflare:test" {
     DB: D1Database;
     ASSETS: Fetcher;
     TEST_MIGRATIONS: D1Migration[];
+    // Configured in vitest.config.ts to exercise the professor signup gate.
+    PROF_SIGNUP_CODE?: string;
   }
 }

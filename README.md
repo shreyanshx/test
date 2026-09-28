@@ -16,6 +16,39 @@ served via Workers Static Assets, and [D1](https://developers.cloudflare.com/d1/
   or unpublishes, and reviews all submissions for papers they authored. A
   professor can only modify papers they own.
 
+### Gating professor sign-up
+
+By default this is an open classroom tool: the sign-up form lets a new account
+pick either role, so anyone can register as a professor. If you want to
+restrict who can become a professor, set the optional **`PROF_SIGNUP_CODE`**
+binding. When it is set, `POST /api/auth/signup` with `role: "prof"` must
+include a matching `prof_code` field (the sign-up UI shows a "Professor signup
+code" field when *Professor* is selected); students never need it.
+
+Set it as a Worker secret for production:
+
+```sh
+npx wrangler secret put PROF_SIGNUP_CODE
+```
+
+or, for local dev, uncomment the `vars.PROF_SIGNUP_CODE` entry in
+`wrangler.jsonc`. Leaving it unset keeps the open-registration behaviour.
+
+### Login throttling
+
+`POST /api/auth/login` is rate-limited per `(email, ip)`: after 5 failed
+attempts within a 15-minute window the pair is locked out for 15 minutes and
+further attempts return HTTP `429` with a `Retry-After` header (a successful
+login clears the counter). This bounds online password guessing. Failed
+attempts are tracked in the `login_attempts` table (migration `0003`).
+
+### Sessions and logout
+
+`POST /api/auth/logout` clears the current session. Send a JSON body of
+`{ "all": true }` to revoke **every** session for the account ("sign out
+everywhere") — useful if a credential may be compromised. Expired sessions are
+also cleaned up lazily whenever they're looked up.
+
 ## Tech stack
 
 - **[Hono](https://hono.dev)** — API router and middleware (auth + role
@@ -34,7 +67,7 @@ served via Workers Static Assets, and [D1](https://developers.cloudflare.com/d1/
 ```
 src/          Worker TypeScript (index.ts entry, auth.ts, db.ts, papers.ts)
 public/       Static SPA frontend served by the ASSETS binding
-migrations/   D1 SQL migrations (0001_init.sql, 0002_papers.sql)
+migrations/   D1 SQL migrations (0001_init.sql, 0002_papers.sql, 0003_login_attempts.sql)
 test/         Vitest specs (auth, papers, assessment) + helpers
 wrangler.jsonc  Worker config (bindings, assets, D1)
 ```
@@ -90,7 +123,14 @@ The suite covers:
 - **`test/auth.spec.ts`** — signup creates a user and sets the `sid` session
   cookie; duplicate email is rejected (409); wrong password fails (401);
   `/api/auth/me` returns the user with the cookie and 401 without it; an
-  invalid role is rejected (400).
+  invalid role is rejected (400); logout invalidates the session and
+  `{ all: true }` revokes every session for the account; the `PROF_SIGNUP_CODE`
+  gate rejects prof signups without/with a wrong code and accepts the right one
+  (students unaffected); login throttling locks out after repeated failures
+  (429) and a success clears the counter.
+- **`test/routing.spec.ts`** — an unknown `/api/*` path returns a JSON `404`
+  (not the SPA shell with `200`), while an unknown non-API path still serves
+  the SPA `index.html`.
 - **`test/papers.spec.ts`** — a professor creates a paper, adds questions, and
   publishes; a student lists only published papers; `GET /api/papers/:id` as a
   student omits `correct_answer`; a student hitting a prof-only route gets 403;

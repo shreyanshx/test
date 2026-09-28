@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TestClient, uniqueEmail } from "./helpers";
+import { TEST_PROF_CODE } from "./prof-code";
 
 async function signUp(
   client: TestClient,
@@ -11,6 +12,8 @@ async function signUp(
     name,
     password: "supersecret",
     role,
+    // The test env sets PROF_SIGNUP_CODE, so prof signups must supply it.
+    ...(role === "prof" ? { prof_code: TEST_PROF_CODE } : {}),
   });
   expect(res.status).toBe(201);
 }

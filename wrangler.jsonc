@@ -10,6 +10,15 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
+  // Optional: gate professor self-registration behind a shared code.
+  // If PROF_SIGNUP_CODE is set, /api/auth/signup requires a matching
+  // "prof_code" to register as a professor; if unset, anyone may pick the
+  // "prof" role (open classroom mode). Prefer a Worker secret for production:
+  //   npx wrangler secret put PROF_SIGNUP_CODE
+  // For local dev you can uncomment the plain var below instead.
+  // "vars": {
+  //   "PROF_SIGNUP_CODE": "change-me-classroom-code"
+  // },
   "d1_databases": [
     {
       "binding": "DB",

@@ -151,6 +151,8 @@ function renderAuth() {
 
     let nameInput = null;
     let roleSelect = null;
+    let profCodeInput = null;
+    let profCodeLabel = null;
     if (mode === "signup") {
       nameInput = el("input", { type: "text", placeholder: "Ada Lovelace" });
       roleSelect = el("select", {}, [
@@ -161,6 +163,24 @@ function renderAuth() {
       card.appendChild(nameInput);
       card.appendChild(el("label", {}, "Role"));
       card.appendChild(roleSelect);
+
+      // Optional professor signup code. Only shown when "Professor" is
+      // selected. If the deployment sets PROF_SIGNUP_CODE, the server requires
+      // this to match; otherwise it is ignored. See README.
+      profCodeLabel = el("label", {}, "Professor signup code (if required)");
+      profCodeInput = el("input", {
+        type: "password",
+        placeholder: "Leave blank if not required",
+      });
+      profCodeLabel.hidden = true;
+      profCodeInput.hidden = true;
+      roleSelect.addEventListener("change", () => {
+        const isProf = roleSelect.value === "prof";
+        profCodeLabel.hidden = !isProf;
+        profCodeInput.hidden = !isProf;
+      });
+      card.appendChild(profCodeLabel);
+      card.appendChild(profCodeInput);
     }
 
     card.appendChild(el("label", {}, "Password"));
@@ -182,14 +202,18 @@ function renderAuth() {
           });
           currentUser = data.user;
         } else {
+          const signupBody = {
+            email: emailInput.value.trim(),
+            name: nameInput.value.trim(),
+            password: passInput.value,
+            role: roleSelect.value,
+          };
+          if (roleSelect.value === "prof" && profCodeInput) {
+            signupBody.prof_code = profCodeInput.value;
+          }
           const data = await api("/api/auth/signup", {
             method: "POST",
-            body: {
-              email: emailInput.value.trim(),
-              name: nameInput.value.trim(),
-              password: passInput.value,
-              role: roleSelect.value,
-            },
+            body: signupBody,
           });
           currentUser = data.user;
         }
