@@ -5,8 +5,11 @@ A full-stack web application where **professors** author test papers and
 and review submissions; students browse published papers, submit answers, and
 get an auto-graded score. It runs entirely on Cloudflare's edge: a
 [Hono](https://hono.dev) API on Cloudflare Workers, a single-page frontend
-served via Workers Static Assets, and [D1](https://developers.cloudflare.com/d1/)
-(SQLite) for persistence.
+served via Workers Static Assets, and a
+[SQLite-backed Durable Object](https://developers.cloudflare.com/durable-objects/api/storage-api/#sql-api)
+for persistence. There is **no** account-level database to create: the Durable
+Object is provisioned automatically on deploy, so the site goes live from a
+bare `npx wrangler deploy` with zero manual setup and no database id.
 
 ## Roles
 
@@ -40,7 +43,7 @@ or, for local dev, uncomment the `vars.PROF_SIGNUP_CODE` entry in
 attempts within a 15-minute window the pair is locked out for 15 minutes and
 further attempts return HTTP `429` with a `Retry-After` header (a successful
 login clears the counter). This bounds online password guessing. Failed
-attempts are tracked in the `login_attempts` table (migration `0003`).
+attempts are tracked in the `login_attempts` table.
 
 ### Sessions and logout
 
@@ -55,21 +58,23 @@ also cleaned up lazily whenever they're looked up.
   checks), mounted in `src/index.ts`.
 - **Cloudflare Workers Static Assets** — serves the SPA in `public/`. Unknown
   (non-`/api`) paths fall back to `index.html`.
-- **Cloudflare D1** — SQLite database bound as `DB`. Schema lives in
-  `migrations/`.
+- **SQLite-backed Durable Object** — a single `DataStore` Durable Object
+  (bound as `DATA`) owns all persistent state via `ctx.storage.sql`. It
+  initializes its schema on first access, so no external database and no
+  `database_id` are required. Cloudflare provisions it on deploy via the
+  `migrations` entry in `wrangler.jsonc`.
 - **Auth** — session-cookie auth (`sid`, HttpOnly) backed by a `sessions`
   table; passwords hashed with Web Crypto PBKDF2 (SHA-256).
 - **Vitest + `@cloudflare/vitest-pool-workers`** — tests run inside the real
-  `workerd` runtime against a local D1 binding.
+  `workerd` runtime against the Durable Object binding.
 
 ## Project layout
 
 ```
-src/          Worker TypeScript (index.ts entry, auth.ts, db.ts, papers.ts)
+src/          Worker TypeScript (index.ts entry, auth.ts, db.ts, papers.ts, store.ts DO)
 public/       Static SPA frontend served by the ASSETS binding
-migrations/   D1 SQL migrations (0001_init.sql, 0002_papers.sql, 0003_login_attempts.sql)
 test/         Vitest specs (auth, papers, assessment) + helpers
-wrangler.jsonc  Worker config (bindings, assets, D1)
+wrangler.jsonc  Worker config (bindings, assets, Durable Object)
 ```
 
 ## Prerequisites
@@ -87,24 +92,17 @@ npm install
 
 ## Local development
 
-1. Apply the migrations to your **local** D1 database:
+Start the dev server:
 
-   ```sh
-   npm run db:migrate:local
-   ```
+```sh
+npm run dev
+```
 
-   (This runs `wrangler d1 migrations apply testpaper_db --local`, creating the
-   local SQLite state under `.wrangler/`.)
-
-2. Start the dev server:
-
-   ```sh
-   npm run dev
-   ```
-
-   `wrangler dev` serves the Worker and the static frontend locally with the
-   `DB` and `ASSETS` bindings wired up. Open the printed URL in a browser,
-   sign up as a professor or student, and try it out.
+`wrangler dev` serves the Worker and the static frontend locally with the
+`DATA` (Durable Object) and `ASSETS` bindings wired up. The Durable Object
+creates its own schema on first access, so there is no migration step to run.
+Local SQLite state lives under `.wrangler/`. Open the printed URL in a browser,
+sign up as a professor or student, and try it out.
 
 ## Tests
 
@@ -113,10 +111,9 @@ npm test
 ```
 
 This runs Vitest via `@cloudflare/vitest-pool-workers`, which executes the
-specs **inside `workerd`** with a real local D1 binding. `vitest.config.ts`
-reads the SQL in `migrations/` and applies it to the test database before the
-specs run (see `test/apply-migrations.ts`), so tests exercise the same schema
-as production.
+specs **inside `workerd`** against the `DataStore` Durable Object binding. The
+Durable Object initializes its own schema on first access, so tests exercise
+the same schema as production.
 
 The suite covers:
 
@@ -156,57 +153,34 @@ npx wrangler deploy --dry-run --outdir=dist
 
 ## Deploy to Cloudflare
 
-A real deploy needs your Cloudflare account and a real D1 database id. Run
-these steps once to set up, then deploy:
+There is **no manual resource creation** and **no `database_id`** to configure.
+The SQLite-backed Durable Object is declared entirely in `wrangler.jsonc` and
+provisioned automatically on deploy. Once authenticated, a single command takes
+the site live:
 
-1. **Authenticate wrangler with your account:**
+1. **Authenticate wrangler with your account** (first time only):
 
    ```sh
    npx wrangler login
    ```
 
-2. **Create the D1 database** (the name must match `wrangler.jsonc`):
-
-   ```sh
-   npx wrangler d1 create testpaper_db
-   ```
-
-   This prints a `database_id`. **Copy it and paste it into `wrangler.jsonc`**,
-   replacing the placeholder `database_id` under the `d1_databases` entry:
-
-   ```jsonc
-   "d1_databases": [
-     {
-       "binding": "DB",
-       "database_name": "testpaper_db",
-       "database_id": "<paste-the-id-from-the-command-here>",
-       "migrations_dir": "migrations"
-     }
-   ]
-   ```
-
-3. **Apply the migrations to the remote (production) database:**
-
-   ```sh
-   npm run db:migrate:remote
-   ```
-
-   (Runs `wrangler d1 migrations apply testpaper_db --remote`.)
-
-4. **Deploy:**
+2. **Deploy:**
 
    ```sh
    npx wrangler deploy
    ```
 
+That's it. The Durable Object is created on first deploy and initializes its
+own schema on first access.
+
 ### Required bindings
 
 `wrangler.jsonc` declares the two bindings the Worker needs:
 
-| Binding  | Resource                    | Notes                                        |
-| -------- | --------------------------- | -------------------------------------------- |
-| `DB`     | D1 database `testpaper_db`  | Set `database_id` after `wrangler d1 create` |
-| `ASSETS` | Static assets from `./public` | Serves the SPA; SPA fallback to `index.html` |
+| Binding  | Resource                        | Notes                                                     |
+| -------- | ------------------------------- | --------------------------------------------------------- |
+| `DATA`   | `DataStore` Durable Object      | SQLite-backed; provisioned automatically via `migrations` |
+| `ASSETS` | Static assets from `./public`   | Serves the SPA; SPA fallback to `index.html`              |
 
 ### Cloudflare Workers Builds settings
 
@@ -214,9 +188,9 @@ If you connect this GitHub repo to Cloudflare for automatic builds/deploys, the
 "Set up your application" screen maps to this project as follows:
 
 - **Repository:** `shreyanshx/test`.
-- **Root directory:** `test`. All app code (this folder — `src/`, `public/`,
-  `migrations/`, `wrangler.jsonc`, `package.json`) lives here, so point the
-  build's root directory at `test`.
+- **Root directory:** `test`. All app code (this folder: `src/`, `public/`,
+  `wrangler.jsonc`, `package.json`) lives here, so point the build's root
+  directory at `test`.
 - **Build command (optional):** the authoritative deploy command for this
   project is `npx wrangler deploy`. You can leave the Build command field blank
   (or set a no-op) and let the platform deploy from `wrangler.jsonc`, or set it
@@ -236,6 +210,6 @@ If you connect this GitHub repo to Cloudflare for automatic builds/deploys, the
   session-cookie login — useful for locking a preview or the whole app to your
   organization.
 
-> **Note:** the D1 `database_id` must be filled in and the remote migrations
-> applied (steps 2–3) before the first successful production deploy, regardless
-> of whether you deploy from the CLI or via Workers Builds.
+> **Note:** no pre-deploy setup is required. The Durable Object is provisioned
+> automatically on the first deploy (whether from the CLI or via Workers
+> Builds), and it creates its own schema on first access.

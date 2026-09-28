@@ -13,6 +13,7 @@ import {
   deleteSessionsForUser,
   findSession,
   findUserByEmail,
+  getStore,
   insertUser,
 } from "./db";
 import {
@@ -109,13 +110,13 @@ auth.post("/signup", async (c) => {
     }
   }
 
-  const existing = await findUserByEmail(c.env.DB, email);
+  const existing = await findUserByEmail(getStore(c.env), email);
   if (existing) {
     return c.json({ error: "Email is already registered" }, 409);
   }
 
   const { hash, salt } = await hashPassword(password);
-  const user = await insertUser(c.env.DB, {
+  const user = await insertUser(getStore(c.env), {
     email,
     name: name.trim(),
     role: role as Role,
@@ -124,7 +125,7 @@ auth.post("/signup", async (c) => {
   });
 
   const sid = newSessionId();
-  await createSession(c.env.DB, {
+  await createSession(getStore(c.env), {
     id: sid,
     userId: user.id,
     expiresAt: sessionExpiry(),
@@ -161,7 +162,7 @@ auth.post("/login", async (c) => {
   // an attacker can't bypass it by varying letter case.
   const throttleKey = email.trim().toLowerCase();
   const ip = getClientIp(c);
-  const lockedFor = await loginLockoutRemaining(c.env.DB, throttleKey, ip);
+  const lockedFor = await loginLockoutRemaining(getStore(c.env), throttleKey, ip);
   if (lockedFor !== null) {
     return c.json(
       { error: "Too many failed attempts. Try again later." },
@@ -170,9 +171,9 @@ auth.post("/login", async (c) => {
     );
   }
 
-  const user = await findUserByEmail(c.env.DB, email);
+  const user = await findUserByEmail(getStore(c.env), email);
   if (!user) {
-    await registerLoginFailure(c.env.DB, throttleKey, ip);
+    await registerLoginFailure(getStore(c.env), throttleKey, ip);
     return c.json({ error: "Invalid email or password" }, 401);
   }
 
@@ -182,15 +183,15 @@ auth.post("/login", async (c) => {
     user.password_salt
   );
   if (!ok) {
-    await registerLoginFailure(c.env.DB, throttleKey, ip);
+    await registerLoginFailure(getStore(c.env), throttleKey, ip);
     return c.json({ error: "Invalid email or password" }, 401);
   }
 
   // Successful login clears the failure bucket for this (email, ip).
-  await registerLoginSuccess(c.env.DB, throttleKey, ip);
+  await registerLoginSuccess(getStore(c.env), throttleKey, ip);
 
   const sid = newSessionId();
-  await createSession(c.env.DB, {
+  await createSession(getStore(c.env), {
     id: sid,
     userId: user.id,
     expiresAt: sessionExpiry(),
@@ -218,14 +219,14 @@ auth.post("/logout", async (c) => {
   if (sid) {
     if (revokeAll) {
       // Resolve the session to its user, then drop every session they own.
-      const found = await findSession(c.env.DB, sid);
+      const found = await findSession(getStore(c.env), sid);
       if (found) {
-        await deleteSessionsForUser(c.env.DB, found.user.id);
+        await deleteSessionsForUser(getStore(c.env), found.user.id);
       } else {
-        await deleteSession(c.env.DB, sid);
+        await deleteSession(getStore(c.env), sid);
       }
     } else {
-      await deleteSession(c.env.DB, sid);
+      await deleteSession(getStore(c.env), sid);
     }
   }
   clearSessionCookie(c);
@@ -256,8 +257,8 @@ papers.get("/", async (c) => {
   const user = c.get("user");
   const rows =
     user.role === "prof"
-      ? await listPapersByAuthor(c.env.DB, user.id)
-      : await listPublishedPapers(c.env.DB);
+      ? await listPapersByAuthor(getStore(c.env), user.id)
+      : await listPublishedPapers(getStore(c.env));
 
   const list = rows.map((p) => ({
     id: p.id,
@@ -290,7 +291,7 @@ papers.post("/", requireRole("prof"), async (c) => {
     return c.json({ error: "Title is required" }, 400);
   }
 
-  const paper = await createPaper(c.env.DB, {
+  const paper = await createPaper(getStore(c.env), {
     title: title.trim(),
     description:
       typeof description === "string" && description.trim().length > 0
@@ -325,7 +326,7 @@ papers.get("/:id", async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
 
   const isAuthorProf = user.role === "prof" && paper.author_id === user.id;
@@ -337,7 +338,7 @@ papers.get("/:id", async (c) => {
     }
   }
 
-  const questions = await listQuestions(c.env.DB, id);
+  const questions = await listQuestions(getStore(c.env), id);
   // Only the author professor sees correct answers.
   const publicQuestions = questions.map((q) =>
     toPublicQuestion(q, isAuthorProf)
@@ -363,7 +364,7 @@ papers.put("/:id", requireRole("prof"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
   if (paper.author_id !== user.id) {
     return c.json({ error: "Forbidden" }, 403);
@@ -409,7 +410,7 @@ papers.put("/:id", requireRole("prof"), async (c) => {
         ? 1
         : 0;
 
-  const updated = await updatePaper(c.env.DB, id, {
+  const updated = await updatePaper(getStore(c.env), id, {
     title: nextTitle,
     description: nextDescription,
     subject: nextSubject,
@@ -436,13 +437,13 @@ papers.delete("/:id", requireRole("prof"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
   if (paper.author_id !== user.id) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  await deletePaper(c.env.DB, id);
+  await deletePaper(getStore(c.env), id);
   return c.json({ ok: true });
 });
 
@@ -452,7 +453,7 @@ papers.post("/:id/questions", requireRole("prof"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
   if (paper.author_id !== user.id) {
     return c.json({ error: "Forbidden" }, 403);
@@ -494,9 +495,9 @@ papers.post("/:id/questions", requireRole("prof"), async (c) => {
     pts = Math.floor(points);
   }
 
-  const position = await nextQuestionPosition(c.env.DB, id);
+  const position = await nextQuestionPosition(getStore(c.env), id);
 
-  const question = await addQuestion(c.env.DB, {
+  const question = await addQuestion(getStore(c.env), {
     paperId: id,
     position,
     prompt: prompt.trim(),
@@ -514,13 +515,13 @@ papers.get("/:id/submissions", requireRole("prof"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
   if (paper.author_id !== user.id) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const subs = await listSubmissionsForPaper(c.env.DB, id);
+  const subs = await listSubmissionsForPaper(getStore(c.env), id);
   return c.json({
     submissions: subs.map((s) => ({
       id: s.id,
@@ -540,7 +541,7 @@ papers.post("/:id/submit", requireRole("student"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const paper = await findPaperById(c.env.DB, id);
+  const paper = await findPaperById(getStore(c.env), id);
   if (!paper) return c.json({ error: "Paper not found" }, 404);
   if (paper.published !== 1) {
     return c.json({ error: "Cannot submit to an unpublished paper" }, 403);
@@ -563,14 +564,14 @@ papers.post("/:id/submit", requireRole("student"), async (c) => {
   }
   const answers = rawAnswers as Record<string, unknown>;
 
-  const questions = await listQuestions(c.env.DB, id);
+  const questions = await listQuestions(getStore(c.env), id);
   if (questions.length === 0) {
     return c.json({ error: "Paper has no questions" }, 400);
   }
 
   const { score, maxScore } = gradeAnswers(questions, answers);
 
-  const submission = await upsertSubmission(c.env.DB, {
+  const submission = await upsertSubmission(getStore(c.env), {
     paperId: id,
     studentId: user.id,
     answers: JSON.stringify(answers),
@@ -594,7 +595,7 @@ papers.get("/:id/result", requireRole("student"), async (c) => {
   if (id === null) return c.json({ error: "Invalid paper id" }, 400);
 
   const user = c.get("user");
-  const submission = await findSubmission(c.env.DB, id, user.id);
+  const submission = await findSubmission(getStore(c.env), id, user.id);
   if (!submission) return c.json({ error: "No submission found" }, 404);
 
   return c.json({
@@ -626,3 +627,7 @@ app.all("*", async (c) => {
 });
 
 export default app;
+
+// Re-export the Durable Object class so wrangler can bind it (see the
+// durable_objects.bindings + migrations entry in wrangler.jsonc).
+export { DataStore } from "./store";

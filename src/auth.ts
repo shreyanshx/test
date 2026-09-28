@@ -10,12 +10,14 @@ import type {
   Bindings,
   PublicUser,
   Role,
+  Store,
   UserRow,
 } from "./db";
 import {
   clearLoginAttempts,
   findLoginAttempt,
   findSession,
+  getStore,
   recordFailedLogin,
   toPublicUser,
 } from "./db";
@@ -152,7 +154,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
   if (!sid) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const found = await findSession(c.env.DB, sid);
+  const found = await findSession(getStore(c.env), sid);
   if (!found) {
     clearSessionCookie(c);
     return c.json({ error: "Unauthorized" }, 401);
@@ -177,12 +179,12 @@ export function getClientIp(c: Context): string {
  * on the lockout, or null when the caller may proceed.
  */
 export async function loginLockoutRemaining(
-  db: Bindings["DB"],
+  store: Store,
   email: string,
   ip: string,
   now: number = Date.now()
 ): Promise<number | null> {
-  const row = await findLoginAttempt(db, email, ip);
+  const row = await findLoginAttempt(store, email, ip);
   if (!row || !row.locked_until) return null;
   const until = new Date(row.locked_until).getTime();
   if (until <= now) return null;
@@ -195,12 +197,12 @@ export async function loginLockoutRemaining(
  * failure threshold is reached.
  */
 export async function registerLoginFailure(
-  db: Bindings["DB"],
+  store: Store,
   email: string,
   ip: string,
   now: number = Date.now()
 ): Promise<void> {
-  const row = await findLoginAttempt(db, email, ip);
+  const row = await findLoginAttempt(store, email, ip);
   const windowStartMs = row ? new Date(row.window_start).getTime() : now;
   const withinWindow = row !== null && now - windowStartMs < LOGIN_WINDOW_MS;
 
@@ -213,7 +215,7 @@ export async function registerLoginFailure(
       ? new Date(now + LOGIN_LOCKOUT_MS).toISOString()
       : null;
 
-  await recordFailedLogin(db, {
+  await recordFailedLogin(store, {
     email,
     ip,
     now: new Date(now),
@@ -225,11 +227,11 @@ export async function registerLoginFailure(
 
 /** Clear the failure bucket after a successful login. */
 export async function registerLoginSuccess(
-  db: Bindings["DB"],
+  store: Store,
   email: string,
   ip: string
 ): Promise<void> {
-  await clearLoginAttempts(db, email, ip);
+  await clearLoginAttempts(store, email, ip);
 }
 
 /** Requires the authenticated user to have a specific role. Use after requireAuth. */
