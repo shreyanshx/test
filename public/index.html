@@ -1,22 +1,852 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TestPaper &middot; Assessments</title>
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <header id="topbar" class="topbar" hidden>
-      <div class="brand">TestPaper</div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TestPaper // Autonomous Examination & Assessment Platform</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Top System Ticker -->
+  <div class="top-ticker" id="top-ticker">
+    <div class="ticker-left">
+      <div class="ticker-item">
+        <span class="status-dot-pulse"></span>
+        <span style="color: #fff; font-weight: 600;">PLATFORM STATUS: ACTIVE</span>
+      </div>
+      <div class="ticker-item">
+        <span>EDGE CLUSTER: <strong>us-east-1 (1.2ms)</strong></span>
+      </div>
+      <div class="ticker-item">
+        <span>WORKER ENGINE: <strong>Cloudflare V8</strong></span>
+      </div>
+    </div>
+    <div class="ticker-right">
+      <button class="sound-toggle-btn" id="soundToggle" onclick="toggleAudioFx()">
+        <span id="soundIcon">🔇</span>
+        <span id="soundText">SFX OFF</span>
+      </button>
+      <span>ENCRYPTION: AES-256-GCM</span>
+    </div>
+  </div>
+
+  <!-- Authenticated App Topbar (Hidden when on Landing Page) -->
+  <header id="topbar" class="topbar" hidden>
+    <div class="topbar-container">
+      <div class="brand">
+        <svg class="brand-logo-svg" viewBox="0 0 100 100" style="width: 28px; height: 28px;">
+          <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" fill="none" stroke="#38bdf8" stroke-width="8"/>
+          <circle cx="50" cy="50" r="16" fill="#38bdf8"/>
+        </svg>
+        <span>TestPaper <strong>OS</strong></span>
+      </div>
       <div class="topbar-right">
         <span id="who" class="who"></span>
-        <button id="logout-btn" class="btn btn-ghost">Log out</button>
+        <button id="logout-btn" class="btn btn-ghost btn-sm">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Authenticated Application Dashboard (Hidden when on Landing Page) -->
+  <main id="app" hidden>
+    <p class="loading">Loading session data&hellip;</p>
+  </main>
+
+  <!-- ==============================================================
+       DYNAMIC HIGH-GRAPHICS HOMEPAGE (SHOWN BEFORE LOGIN)
+       ============================================================== -->
+  <div id="landing-page">
+    <!-- Scroll Progress Indicator -->
+    <div id="scroll-progress"></div>
+
+    <!-- Mouse Spotlight Glow -->
+    <div id="cursor-light"></div>
+
+    <!-- Interactive Constellation Particles -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Ambient Glowing Nebulae -->
+    <div class="mesh-glow glow-1"></div>
+    <div class="mesh-glow glow-2"></div>
+    <div class="mesh-glow glow-3"></div>
+
+    <!-- Cyber Grid -->
+    <div class="cyber-grid"></div>
+
+    <!-- Floating Navigation Bar -->
+    <header id="landing-header">
+      <div class="container nav-container">
+        <a href="#" class="brand">
+          <svg class="brand-logo-svg" viewBox="0 0 100 100">
+            <defs>
+              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="50%" stop-color="#818cf8"/>
+                <stop offset="100%" stop-color="#c084fc"/>
+              </linearGradient>
+            </defs>
+            <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" fill="none" stroke="url(#logoGrad)" stroke-width="6"/>
+            <circle cx="50" cy="50" r="16" fill="url(#logoGrad)"/>
+            <line x1="50" y1="5" x2="50" y2="34" stroke="#38bdf8" stroke-width="4"/>
+            <line x1="50" y1="66" x2="50" y2="95" stroke="#c084fc" stroke-width="4"/>
+            <line x1="10" y1="25" x2="35" y2="40" stroke="#818cf8" stroke-width="4"/>
+            <line x1="90" y1="75" x2="65" y2="60" stroke="#818cf8" stroke-width="4"/>
+          </svg>
+          <div class="brand-name">TestPaper <span>PRO</span></div>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="#features" class="nav-link">Capabilities</a></li>
+          <li><a href="#architecture" class="nav-link">Workflow</a></li>
+          <li><a href="#sandbox" class="nav-link">Live Terminal</a></li>
+          <li><a href="#testimonials" class="nav-link">Reviews</a></li>
+          <li><a href="#pricing" class="nav-link">Pricing</a></li>
+          <li><a href="#faq" class="nav-link">FAQ</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <button class="btn btn-ghost" onclick="playClickFx(); openAuthModal('login')">Sign In</button>
+          <button class="btn btn-primary btn-glow" onclick="playClickFx(); openAuthModal('signup')">
+            <span>Launch Portal</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
-    <main id="app">
-      <p class="loading">Loading&hellip;</p>
-    </main>
-    <script src="/app.js" type="module"></script>
-  </body>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container hero-grid">
+        <div class="hero-content reveal active">
+          <div class="hero-badge">
+            <span class="status-dot-pulse"></span>
+            <span>NEXT-GEN ASSESSMENT PLATFORM // WORKERS D1 ENGINE</span>
+          </div>
+
+          <h1 class="hero-title">
+            Smart Assessment.<br>
+            <span class="gradient-shimmer">Autonomous Scale with Zero Friction.</span>
+          </h1>
+
+          <p class="hero-subtitle">
+            The high-performance assessment OS built for modern professors and students. Author rigorous test papers, execute real-time automated grading, and prevent cheating with zero-setup SQLite Durable Objects.
+          </p>
+
+          <div class="hero-buttons">
+            <button class="btn btn-primary btn-glow" onclick="playClickFx(); openAuthModal('signup')" style="padding: 0.95rem 2.2rem; font-size: 1.08rem;">
+              <span>Get Started Free</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+            <button class="btn btn-ghost" onclick="playClickFx(); openAuthModal('login')" style="padding: 0.95rem 2rem; font-size: 1.08rem;">
+              <span>Enter Portal Login</span>
+            </button>
+          </div>
+
+          <div class="hero-trust">
+            <div class="avatar-stack">
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#3b82f6"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#8b5cf6"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#10b981"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#f43f5e"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+            </div>
+            <div class="trust-text">
+              Trusted by <strong>120+ Universities & Institutions</strong> worldwide.<br>
+              Over 1.5M+ assessments evaluated at 99.999% SLA.
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Parallax Visual Card -->
+        <div class="hero-visual reveal reveal-delay-2 active">
+          <div class="floating-pill pill-1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <div>
+              <div style="font-size: 0.74rem; color: #94a3b8;">Worker Mesh</div>
+              <div style="font-size: 0.88rem; font-weight: 800; color: #34d399;">Active • 1.2ms</div>
+            </div>
+          </div>
+
+          <div class="floating-pill pill-2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <div>
+              <div style="font-size: 0.74rem; color: #94a3b8;">Zero-Trust Lock</div>
+              <div style="font-size: 0.88rem; font-weight: 800; color: #38bdf8;">Enforced (PBKDF2)</div>
+            </div>
+          </div>
+
+          <div class="dashboard-preview" id="interactive-hero-card">
+            <div class="preview-header">
+              <div class="preview-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <div class="preview-status">
+                <span class="status-dot-pulse" style="background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
+                TESTPAPER-DO-STORE // LIVE
+              </div>
+            </div>
+
+            <div class="preview-body">
+              <div class="preview-stats-row">
+                <div class="preview-stat-card">
+                  <div class="stat-label">Active Exams</div>
+                  <div class="stat-val">348</div>
+                  <div class="stat-badge">+24 Today</div>
+                </div>
+                <div class="preview-stat-card">
+                  <div class="stat-label">Submissions</div>
+                  <div class="stat-val">18.4K</div>
+                  <div class="stat-badge">Auto-graded</div>
+                </div>
+                <div class="preview-stat-card">
+                  <div class="stat-label">Integrity</div>
+                  <div class="stat-val" style="color: #34d399;">100%</div>
+                  <div class="stat-badge">Tamper-proof</div>
+                </div>
+              </div>
+
+              <div class="chart-container">
+                <div class="chart-header">
+                  <span>REAL-TIME ASSESSMENT INGRESS OSCILLOGRAM</span>
+                  <span style="color: #38bdf8; font-weight: 700;">60 FPS LIVE</span>
+                </div>
+                <canvas id="hero-telemetry-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Partner Marquee -->
+    <section class="marquee-section">
+      <div class="marquee-title">Standardized by world-class academic institutions</div>
+      <div class="marquee-track">
+        <div class="partner-item"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span>OXFORD TECH</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>STANFORD LABS</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg><span>CAMBRIDGE ACADEMY</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>MIT RESEARCH</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg><span>BERKELEY SYSTEM</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="m10.4 10.4-3.8 7.2"/><path d="m13.6 13.6 3.8-7.2"/></svg><span>HARVARD EDTECH</span></div>
+        <!-- Duplicate for loop -->
+        <div class="partner-item"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span>OXFORD TECH</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>STANFORD LABS</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg><span>CAMBRIDGE ACADEMY</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>MIT RESEARCH</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg><span>BERKELEY SYSTEM</span></div>
+        <div class="partner-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="m10.4 10.4-3.8 7.2"/><path d="m13.6 13.6 3.8-7.2"/></svg><span>HARVARD EDTECH</span></div>
+      </div>
+    </section>
+
+    <!-- Metrics Section -->
+    <section class="metrics-section">
+      <div class="container">
+        <div class="metrics-grid">
+          <div class="metric-card reveal">
+            <div class="metric-num" data-target="99.999" data-suffix="%">0</div>
+            <div class="metric-title">High-Availability Uptime</div>
+            <div class="metric-desc">Zero-downtime global exam execution</div>
+          </div>
+          <div class="metric-card reveal reveal-delay-1">
+            <div class="metric-num" data-target="150" data-suffix="K+">0</div>
+            <div class="metric-title">Questions Evaluated</div>
+            <div class="metric-desc">Sub-millisecond automated scoring</div>
+          </div>
+          <div class="metric-card reveal reveal-delay-2">
+            <div class="metric-num" data-target="1.2" data-suffix="ms">0</div>
+            <div class="metric-title">Edge Response Time</div>
+            <div class="metric-desc">Distributed Cloudflare Workers points of presence</div>
+          </div>
+          <div class="metric-card reveal reveal-delay-3">
+            <div class="metric-num" data-target="0" data-suffix="s">0</div>
+            <div class="metric-title">Setup Configuration</div>
+            <div class="metric-desc">Instant Durable Object embedded SQLite</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento Grid Features -->
+    <section class="bento-section" id="features">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">KEY CAPABILITIES</div>
+          <h2 class="section-title">Engineered for Academic Excellence</h2>
+          <p class="section-desc">Every component carefully calibrated to eliminate exam latency, ensure integrity, and streamline academic grading.</p>
+        </div>
+
+        <div class="bento-grid">
+          <!-- Bento 1 -->
+          <div class="bento-card col-span-2 reveal">
+            <div>
+              <div class="bento-icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <h3 class="bento-title">Autonomous Paper Authoring & Instant Publishing</h3>
+              <p class="bento-text">Professors can draft complex exam papers with custom multiple-choice options or open text prompts. Seamlessly toggle between draft and published states with instant real-time synchronization to student portals.</p>
+            </div>
+            <div class="bento-graphic">
+              <svg width="100%" height="110" viewBox="0 0 420 110">
+                <defs>
+                  <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#38bdf8"/>
+                    <stop offset="50%" stop-color="#818cf8"/>
+                    <stop offset="100%" stop-color="#34d399"/>
+                  </linearGradient>
+                </defs>
+                <path d="M 30,55 Q 110,15 210,55 T 390,55" fill="none" stroke="url(#lineGrad)" stroke-width="3" stroke-dasharray="6,6">
+                  <animate attributeName="stroke-dashoffset" values="100;0" dur="4s" repeatCount="indefinite"/>
+                </path>
+                <circle cx="30" cy="55" r="8" fill="#38bdf8"/>
+                <circle cx="210" cy="55" r="10" fill="#818cf8"/>
+                <circle cx="390" cy="55" r="8" fill="#34d399"/>
+                <text x="30" y="90" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="monospace">Professor Draft</text>
+                <text x="210" y="90" fill="#38bdf8" font-size="11" text-anchor="middle" font-family="monospace">Durable Object</text>
+                <text x="390" y="90" fill="#34d399" font-size="11" text-anchor="middle" font-family="monospace">Student Portal</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Bento 2 -->
+          <div class="bento-card reveal reveal-delay-1">
+            <div>
+              <div class="bento-icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Cryptographic Anti-Cheating</h3>
+              <p class="bento-text">PBKDF2 salted password hashing, sliding-window login throttling, and professor registration gating keys.</p>
+            </div>
+            <div class="bento-graphic">
+              <svg width="85" height="85" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(192, 132, 252, 0.25)" stroke-width="2"/>
+                <circle cx="50" cy="50" r="26" fill="none" stroke="rgba(192, 132, 252, 0.45)" stroke-width="2"/>
+                <circle cx="50" cy="50" r="10" fill="rgba(192, 132, 252, 0.85)"/>
+                <line x1="50" y1="50" x2="88" y2="22" stroke="#c084fc" stroke-width="2.5">
+                  <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="2.8s" repeatCount="indefinite"/>
+                </line>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Bento 3 -->
+          <div class="bento-card reveal">
+            <div>
+              <div class="bento-icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <h3 class="bento-title">Real-Time Automated Grading</h3>
+              <p class="bento-text">Deterministic instant assessment evaluation with itemized point tallies and immediate student feedback displays.</p>
+            </div>
+            <div class="bento-graphic">
+              <svg width="130" height="75" viewBox="0 0 130 75">
+                <ellipse cx="65" cy="38" rx="55" ry="28" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="4,4"/>
+                <circle cx="28" cy="32" r="5" fill="#34d399"/>
+                <circle cx="65" cy="22" r="5" fill="#34d399"/>
+                <circle cx="102" cy="44" r="5" fill="#34d399"/>
+                <line x1="28" y1="32" x2="65" y2="22" stroke="#34d399" stroke-width="1.8"/>
+                <line x1="65" y1="22" x2="102" y2="44" stroke="#34d399" stroke-width="1.8"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Bento 4 -->
+          <div class="bento-card reveal reveal-delay-1">
+            <div>
+              <div class="bento-icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+              </div>
+              <h3 class="bento-title">Submissions Analytics</h3>
+              <p class="bento-text">Comprehensive professor oversight tables showing student scores, submission timestamps, and cohort performance distributions.</p>
+            </div>
+            <div class="bento-graphic">
+              <svg width="160" height="75" viewBox="0 0 160 75">
+                <rect x="20" y="42" width="22" height="26" fill="#f43f5e" rx="4"/>
+                <rect x="56" y="28" width="22" height="40" fill="#f43f5e" rx="4"/>
+                <rect x="92" y="16" width="22" height="52" fill="#34d399" rx="4"/>
+                <rect x="128" y="6" width="22" height="62" fill="#38bdf8" rx="4"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Bento 5 -->
+          <div class="bento-card reveal reveal-delay-2">
+            <div>
+              <div class="bento-icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Global Cloudflare Edge</h3>
+              <p class="bento-text">Zero setup deployment on Cloudflare Workers. Runs within 50ms of every student across 300+ global data centers.</p>
+            </div>
+            <div class="bento-graphic">
+              <svg width="130" height="75" viewBox="0 0 130 75">
+                <path d="M 20,38 H 110" stroke="#fbbf24" stroke-width="3"/>
+                <circle cx="25" cy="38" r="7" fill="#fbbf24"/>
+                <circle cx="65" cy="38" r="7" fill="#fbbf24"/>
+                <circle cx="105" cy="38" r="7" fill="#34d399"/>
+                <path d="M 65,38 Q 80,12 105,18" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3,3"/>
+                <circle cx="105" cy="18" r="5" fill="#38bdf8"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Terminal Sandbox -->
+    <section class="sandbox-section" id="sandbox">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">LIVE INTERACTIVE CONTROL</div>
+          <h2 class="section-title">Test the Platform in Real Time</h2>
+          <p class="section-desc">Experience our zero-configuration CLI and Worker engine directly in your browser.</p>
+        </div>
+
+        <div class="terminal-window reveal">
+          <div class="terminal-nav">
+            <div class="preview-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="terminal-tabs">
+              <button class="terminal-tab active" onclick="switchTerminalTab(this, 'deploy')">deploy.sh</button>
+              <button class="terminal-tab" onclick="switchTerminalTab(this, 'assessment')">assessment.spec.ts</button>
+              <button class="terminal-tab" onclick="switchTerminalTab(this, 'papers')">papers.api.json</button>
+              <button class="terminal-tab" onclick="switchTerminalTab(this, 'security')">auth-audit</button>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 0.78rem; color: #64748b;">
+              BASH // TESTPAPER-CLI
+            </div>
+          </div>
+
+          <div class="terminal-body" id="terminal-content"></div>
+
+          <div class="terminal-actions">
+            <span style="font-size: 0.82rem; color: #64748b; align-self: center;">TRY PRESET ACTIONS:</span>
+            <button class="cmd-chip" onclick="playClickFx(); runCustomTerminalCmd('wrangler deploy --env=production')">🚀 Deploy Worker</button>
+            <button class="cmd-chip" onclick="playClickFx(); runCustomTerminalCmd('vitest run --coverage')">🧪 Run Test Suite</button>
+            <button class="cmd-chip" onclick="playClickFx(); runCustomTerminalCmd('curl -s https://testpaper.io/api/auth/me')">🔍 Check Auth Session</button>
+            <button class="cmd-chip" onclick="playClickFx(); openAuthModal('login')">🔑 Open Login Portal</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Workflow -->
+    <section class="pipeline-section" id="architecture">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">EXAMINATION LIFECYCLE</div>
+          <h2 class="section-title">From Creation to Final Grades</h2>
+          <p class="section-desc">An effortless four-step workflow built to eliminate exam administration overhead.</p>
+        </div>
+
+        <div class="pipeline-steps">
+          <div class="pipeline-step reveal">
+            <div class="step-number">PHASE 01</div>
+            <h3 class="step-title">Author Paper</h3>
+            <p class="step-desc">Professor composes questions, assigns points, and defines correct answer keys.</p>
+          </div>
+          <div class="pipeline-step reveal reveal-delay-1">
+            <div class="step-number">PHASE 02</div>
+            <h3 class="step-title">Publish & Invite</h3>
+            <p class="step-desc">Paper published to student rosters with instant access and anti-tamper safeguards.</p>
+          </div>
+          <div class="pipeline-step reveal reveal-delay-2">
+            <div class="step-number">PHASE 03</div>
+            <h3 class="step-title">Student Takes Exam</h3>
+            <p class="step-desc">Clean, responsive test interface with real-time answer caching and single-submission lock.</p>
+          </div>
+          <div class="pipeline-step reveal reveal-delay-3">
+            <div class="step-number">PHASE 04</div>
+            <h3 class="step-title">Instant Results</h3>
+            <p class="step-desc">Autonomous grading algorithm scores answers and logs full submission analytics immediately.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials-section" id="testimonials">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">CUSTOMER SUCCESS</div>
+          <h2 class="section-title">Loved by Professors & Students</h2>
+          <p class="section-desc">See why educators and educational institutions trust TestPaper for examinations.</p>
+        </div>
+
+        <div class="testi-grid">
+          <div class="testi-card reveal">
+            <div>
+              <div class="testi-stars">★★★★★</div>
+              <p class="testi-text">"Creating midterms and reviewing class-wide score distributions takes 10 minutes instead of days. The instant grading engine is remarkably fast."</p>
+            </div>
+            <div class="testi-author">
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#2563eb"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <div>
+                <div class="author-name">Dr. Alan Thorne</div>
+                <div class="author-role">Chair of Computer Science, Cambridge</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="testi-card reveal reveal-delay-1">
+            <div>
+              <div class="testi-stars">★★★★★</div>
+              <p class="testi-text">"The zero-setup Cloudflare Durable Object backend means zero database configuration headaches. It simply deploys and scales without any maintenance."</p>
+            </div>
+            <div class="testi-author">
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#7c3aed"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <div>
+                <div class="author-name">Sarah Jenkins</div>
+                <div class="author-role">Director of Academic IT, Stanford</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="testi-card reveal reveal-delay-2">
+            <div>
+              <div class="testi-stars">★★★★★</div>
+              <p class="testi-text">"As a student, having my score and answer breakdown immediately after submitting gives me complete peace of mind. The UI is fluid and clean."</p>
+            </div>
+            <div class="testi-author">
+              <svg class="avatar-svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#059669"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 36 C10 26, 30 26, 33 36" fill="#fff"/></svg>
+              <div>
+                <div class="author-name">Liam Patel</div>
+                <div class="author-role">Graduate Student, MIT</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">TRANSPARENT PRICING</div>
+          <h2 class="section-title">Predictable Plans for Every Institution</h2>
+          <p class="section-desc">Scale effortlessly from small classrooms to campus-wide university deployments.</p>
+        </div>
+
+        <div class="billing-toggle reveal">
+          <span id="monthly-label" style="font-weight: 700; color: #fff;">Monthly</span>
+          <div class="toggle-switch" id="billing-switch" onclick="playClickFx(); toggleBilling()"></div>
+          <span id="annual-label" style="color: var(--text-muted);">Annual</span>
+          <span class="discount-tag">SAVE 25%</span>
+        </div>
+
+        <div class="pricing-grid">
+          <div class="pricing-card reveal">
+            <h3 class="plan-name">Educator Free</h3>
+            <p class="plan-desc">For individual teachers and tutors running small tests.</p>
+            <div class="plan-price"><span class="currency">$</span><span class="amount" data-monthly="0" data-annual="0">0</span><span>/mo</span></div>
+            <ul class="plan-features">
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Up to 5 Active Papers</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>500 Student Submissions</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Instant Automated Grading</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Edge Delivery</li>
+            </ul>
+            <button class="btn btn-ghost" onclick="playClickFx(); openAuthModal('signup')">Start Free</button>
+          </div>
+
+          <div class="pricing-card featured reveal reveal-delay-1">
+            <div class="featured-badge">MOST POPULAR</div>
+            <h3 class="plan-name">Department Pro</h3>
+            <p class="plan-desc">For departments and faculties requiring unlimited assessments.</p>
+            <div class="plan-price"><span class="currency">$</span><span class="amount" data-monthly="49" data-annual="36">49</span><span>/mo</span></div>
+            <ul class="plan-features">
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Unlimited Test Papers</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Unlimited Student Submissions</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Professor Signup Code Protection</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Advanced Analytics & CSV Export</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Priority 24/7 Support</li>
+            </ul>
+            <button class="btn btn-primary btn-glow" onclick="playClickFx(); openAuthModal('signup')">Launch Pro Trial</button>
+          </div>
+
+          <div class="pricing-card reveal reveal-delay-2">
+            <h3 class="plan-name">Campus Hyperscale</h3>
+            <p class="plan-desc">For university-wide institutional scale with dedicated infrastructure.</p>
+            <div class="plan-price"><span class="currency">$</span><span class="amount" data-monthly="199" data-annual="149">199</span><span>/mo</span></div>
+            <ul class="plan-features">
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Custom Cloudflare Tenant</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Single Sign-On (SAML / OIDC)</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>FERPA, SOC2 Type II & GDPR</li>
+              <li class="plan-feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>Dedicated Engineering Lead</li>
+            </ul>
+            <button class="btn btn-ghost" onclick="playClickFx(); openAuthModal('login')">Contact Campus Sales</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faq">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-tag">QUESTIONS & ANSWERS</div>
+          <h2 class="section-title">Frequently Asked Questions</h2>
+          <p class="section-desc">Clear answers to common questions about setting up and operating TestPaper.</p>
+        </div>
+
+        <div class="faq-container reveal">
+          <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+              <span>How does professor authentication gating work?</span>
+              <span class="faq-icon">➕</span>
+            </div>
+            <div class="faq-answer">
+              When the deployment sets the optional <code>PROF_SIGNUP_CODE</code> secret, anyone attempting to register as a professor must supply the matching secret code. Students can register freely without needing any code.
+            </div>
+          </div>
+
+          <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+              <span>How is brute-force password guessing prevented?</span>
+              <span class="faq-icon">➕</span>
+            </div>
+            <div class="faq-answer">
+              TestPaper implements sliding-window login throttling. After 5 consecutive failed attempts from an email/IP pair within 15 minutes, access is locked out for 15 minutes and returns HTTP 429 with a Retry-After header.
+            </div>
+          </div>
+
+          <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+              <span>Can students see correct answers before submitting?</span>
+              <span class="faq-icon">➕</span>
+            </div>
+            <div class="faq-answer">
+              No. The backend API strictly strips all correct answer fields whenever a paper is requested by a user with the student role. Answers are only verified server-side inside the Worker during submission grading.
+            </div>
+          </div>
+
+          <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+              <span>What database does TestPaper use?</span>
+              <span class="faq-icon">➕</span>
+            </div>
+            <div class="faq-answer">
+              TestPaper runs on Cloudflare Workers backed by SQLite inside Durable Objects for zero-setup deployments, with full ACID compliance and zero external database management needed.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grand CTA -->
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-box reveal">
+          <h2 class="cta-title">Ready to Elevate Your Academic Assessments?</h2>
+          <p class="cta-desc">Join hundreds of professors and thousands of students already experiencing the zero-latency future of digital examination.</p>
+          <div style="display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-glow" onclick="playClickFx(); openAuthModal('signup')" style="padding: 1.05rem 2.4rem; font-size: 1.12rem;">
+              <span>Create Account in 60 Seconds</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+            <button class="btn btn-ghost" onclick="playClickFx(); openAuthModal('login')" style="padding: 1.05rem 2.2rem; font-size: 1.12rem;">
+              <span>Sign In to Existing Account</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="brand" style="margin-bottom: 1.2rem;">
+              <svg class="brand-logo-svg" viewBox="0 0 100 100" style="width: 32px; height: 32px;">
+                <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" fill="none" stroke="#38bdf8" stroke-width="8"/>
+                <circle cx="50" cy="50" r="16" fill="#38bdf8"/>
+              </svg>
+              <div class="brand-name">TestPaper <span>OS</span></div>
+            </div>
+            <p style="max-width: 340px; line-height: 1.7; margin-bottom: 1.5rem;">
+              Autonomous examination platform powered by Cloudflare Workers and SQLite Durable Objects. Built for speed, reliability, and academic integrity.
+            </p>
+            <div class="status-indicator">
+              <span class="status-dot-pulse"></span>
+              ALL CLOUD WORKERS OPERATIONAL
+            </div>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Platform</h4>
+            <ul class="footer-links">
+              <li><a href="#features">Paper Authoring</a></li>
+              <li><a href="#features">Automated Grading</a></li>
+              <li><a href="#architecture">Workflow Lifecycle</a></li>
+              <li><a href="#sandbox">Interactive Terminal</a></li>
+              <li><a href="#pricing">Pricing & Plans</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Resources</h4>
+            <ul class="footer-links">
+              <li><a href="#docs">API Documentation</a></li>
+              <li><a href="#security">Anti-Cheating Architecture</a></li>
+              <li><a href="#releases">Worker Changelog</a></li>
+              <li><a href="#status">Status Monitor</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 class="footer-col-title">Security & Account</h4>
+            <ul class="footer-links">
+              <li><a href="#security">Zero-Trust Security</a></li>
+              <li><a href="#privacy">Privacy Policy</a></li>
+              <li><a href="#terms">Terms of Service</a></li>
+              <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Account Portal</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <div>&copy; 2026 TestPaper Systems. All rights reserved.</div>
+          <div style="display: flex; gap: 1.75rem;">
+            <a href="#" style="color: var(--text-muted); text-decoration: none;">GitHub</a>
+            <a href="#" style="color: var(--text-muted); text-decoration: none;">Documentation</a>
+            <a href="#" style="color: var(--text-muted); text-decoration: none;">Security</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to Top">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ==============================================================
+       ADVANCED DYNAMIC AUTHENTICATION MODAL (LOGIN / SIGNUP)
+       ============================================================== -->
+  <div class="modal-overlay" id="authModal" onclick="closeAuthModalOnBackdrop(event)">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeAuthModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="modal-header">
+        <svg class="modal-logo" viewBox="0 0 100 100">
+          <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" fill="none" stroke="url(#logoGrad)" stroke-width="6"/>
+          <circle cx="50" cy="50" r="16" fill="url(#logoGrad)"/>
+        </svg>
+        <h2 class="modal-title" id="modal-title-text">Welcome Back</h2>
+        <p class="modal-subtitle" id="modal-subtitle-text">Enter credentials to authenticate into the TestPaper Portal</p>
+      </div>
+
+      <div class="auth-tab-switch">
+        <button class="auth-tab-btn active" id="tab-login-btn" onclick="playClickFx(); switchAuthMode('login')">Log In</button>
+        <button class="auth-tab-btn" id="tab-signup-btn" onclick="playClickFx(); switchAuthMode('signup')">Sign Up</button>
+      </div>
+
+      <!-- Quick Demo Access Bar -->
+      <div class="demo-login-box" style="margin-bottom: 1.5rem;">
+        <div class="demo-text">
+          <strong>⚡ Quick Demo Credentials:</strong><br>
+          Auto-fill test account
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-demo-fill" onclick="playClickFx(); fillDemoCredentials('student')">Student</button>
+          <button class="btn-demo-fill" onclick="playClickFx(); fillDemoCredentials('prof')">Professor</button>
+        </div>
+      </div>
+
+      <!-- Form Error Display -->
+      <div id="modal-auth-error" class="error" style="margin-bottom: 1rem; text-align: center;"></div>
+
+      <!-- Interactive Form -->
+      <form id="modal-auth-form" onsubmit="handleModalAuthSubmit(event)">
+        <div class="form-group" id="name-group" style="display: none;">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="modal-auth-name" class="form-input" placeholder="Ada Lovelace">
+        </div>
+
+        <div class="form-group" id="role-group" style="display: none;">
+          <label class="form-label">Account Role</label>
+          <select id="modal-auth-role" class="form-input" onchange="handleRoleChange()">
+            <option value="student">Student</option>
+            <option value="prof">Professor</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="prof-code-group" style="display: none;">
+          <label class="form-label">Professor Signup Code <span style="font-size:0.75rem; color:var(--text-dim);">(if required by deployment)</span></label>
+          <input type="password" id="modal-auth-prof-code" class="form-input" placeholder="Enter professor passkey">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="modal-auth-email" class="form-input" placeholder="you@university.edu" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="modal-auth-password" class="form-input" placeholder="••••••••••••" required>
+          <button type="button" class="input-icon-btn" onclick="togglePasswordVisibility()">
+            <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-glow btn-submit" id="btn-modal-submit">
+          <span id="submit-btn-text">Sign In to Dashboard</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js" type="module"></script>
+</body>
 </html>
