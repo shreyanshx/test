@@ -3,26 +3,12 @@
   "name": "test",
   "main": "src/index.ts",
   "compatibility_date": "2024-11-01",
-  // Static frontend served from ./public via the Worker.
-  // not_found_handling "single-page-application" makes unknown paths fall back to index.html.
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
     "not_found_handling": "single-page-application"
   },
-  // Optional: gate professor self-registration behind a shared code.
-  // If PROF_SIGNUP_CODE is set, /api/auth/signup requires a matching
-  // "prof_code" to register as a professor; if unset, anyone may pick the
-  // "prof" role (open classroom mode). Prefer a Worker secret for production:
-  //   npx wrangler secret put PROF_SIGNUP_CODE
-  // For local dev you can uncomment the plain var below instead.
-  // "vars": {
-  //   "PROF_SIGNUP_CODE": "change-me-classroom-code"
-  // },
-  // All persistent state lives in a SQLite-backed Durable Object. Cloudflare
-  // provisions it automatically on `wrangler deploy` (via the migrations entry
-  // below), so there is NO account-level resource to create and NO database_id
-  // to paste in. The site goes live from a bare deploy.
   "durable_objects": {
     "bindings": [
       {
